@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GHIS-TRAP</title>
+<style>
+body {
+  font-family: Arial;
+  background: #eef2f7;
+  margin: 0;
+  padding: 20px;
+}
+.container {
+  max-width: 500px;
+  margin: auto;
+  background: white;
+  padding: 22px;
+  border-radius: 14px;
+}
+h1 { text-align:center; color:#174a78; }
+label { display:block; margin-top:14px; }
+input {
+  width:100%;
+  padding:12px;
+  margin-top:6px;
+  box-sizing:border-box;
+  border:1px solid #ccc;
+  border-radius:7px;
+}
+button {
+  width:100%;
+  padding:14px;
+  margin-top:20px;
+  background:#174a78;
+  color:white;
+  border:0;
+  border-radius:8px;
+  font-size:17px;
+}
+#result {
+  margin-top:20px;
+  padding:15px;
+  background:#e5f5eb;
+  border-radius:8px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>GHIS-TRAP</h1>
+<p>Calcul du volume de ghis</p>
+
+<label>Grande base (B)</label>
+<input id="B" type="number" step="any">
+
+<label>Petite base (b)</label>
+<input id="b" type="number" step="any">
+
+<label>Talus net (T)</label>
+<input id="T" type="number" step="any">
+
+<label>Talus libre (t)</label>
+<input id="t" type="number" step="any">
+
+<label>Longueur du tronçon (L)</label>
+<input id="L" type="number" step="any">
+
+<button onclick="calculer()">CALCULER</button>
+<div id="result"></div>
+</div>
+
+<script>
+function calculer() {
+ const B=+document.getElementById("B").value;
+ const b=+document.getElementById("b").value;
+ const T=+document.getElementById("T").value;
+ const t=+document.getElementById("t").value;
+ const L=+document.getElementById("L").value;
+
+ if (![B,b,T,t,L].every(v=>Number.isFinite(v)&&v>0)) {
+   alert("Veuillez remplir toutes les dimensions.");
+   return;
+ }
+
+ const h=Math.sqrt(T*T-Math.pow((B-b)/2,2));
+ const hf=Math.sqrt(t*t-Math.pow((B-b)/2,2));
+
+ if (hf>h) {
+   alert("Dimensions incompatibles.");
+   return;
+ }
+
+ const H=h-hf;
+ const surface=(B+b)/2*H;
+ const volume=surface*L;
+
+ document.getElementById("result").innerHTML=
+ "<h3>Résultats</h3>"+
+ "Hauteur du ghis : "+H.toFixed(3)+" m<br>"+
+ "Section du ghis : "+surface.toFixed(3)+" m²<br>"+
+ "<h2>Volume : "+volume.toFixed(2)+" m³</h2>";
+}
+</script>
+</body>
+</html>
