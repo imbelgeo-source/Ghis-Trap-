@@ -1,30 +1,162 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GHIS-TRAP</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:15px;background:#edf2f7;font-family:Arial;color:#243447}
+.container{max-width:550px;margin:auto;background:white;padding:18px;border-radius:14px}
+header{text-align:center;background:#174a78;color:white;padding:20px;border-radius:10px}
+h1{margin:0}
+label{display:block;margin-top:15px;font-weight:bold}
+input{width:100%;padding:13px;margin-top:6px;border:1px solid #ccd5df;border-radius:7px;font-size:17px}
+button{width:100%;padding:15px;margin-top:20px;background:#174a78;color:white;border:0;border-radius:8px;font-size:18px;font-weight:bold}
+.results{display:none;margin-top:20px;padding:15px;background:#edf8f0;border-radius:10px;line-height:2}
+.volume{text-align:center;font-size:25px;font-weight:bold;color:#14723b}
+.drawing{margin-top:20px;padding:10px;border:1px solid #ddd;border-radius:10px}
+svg{width:100%;height:auto}
+.error{color:#c62828;margin-top:12px;font-weight:bold}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>GHIS-TRAP</h1>
+<p>Calcul du volume de ghis</p>
+</header>
+
+<label>Grande base (B) - m</label>
+<input id="B" type="text" inputmode="decimal" placeholder="Ex: 6.10">
+
+<label>Petite base (b) - m</label>
+<input id="b" type="text" inputmode="decimal" placeholder="Ex: 2.02">
+
+<label>Talus net (T) - m</label>
+<input id="T" type="text" inputmode="decimal" placeholder="Ex: 2.48">
+
+<label>Talus libre (t) - m</label>
+<input id="t" type="text" inputmode="decimal" placeholder="Ex: 1.86">
+
+<label>Longueur du tronçon (L) - m</label>
+<input id="L" type="text" inputmode="decimal" placeholder="Ex: 93.35">
+
+<button onclick="calculer()">CALCULER</button>
+<div id="error" class="error"></div>
+
+<div id="results" class="results">
+<h3>Résultats du calcul</h3>
+Hauteur du ghis : <b id="hauteur"></b> m<br>
+Largeur supérieure : <b id="largeur"></b> m<br>
+Section du ghis : <b id="surface"></b> m²<br>
+Longueur : <b id="longueur"></b> m
+<hr>
+<div class="volume">
+Volume total :<br>
+<span id="volume"></span> m³
+</div>
+</div>
+
+<div class="drawing">
+<h3 style="text-align:center">Coupe transversale</h3>
+<svg id="schema" viewBox="0 0 400 260">
+<text x="200" y="130" text-anchor="middle" fill="#777">
+En attente des dimensions
+</text>
+</svg>
+</div>
+</div>
+
 <script>
-function calculer() {
-  const B = parseFloat(document.getElementById("B").value);
-  const b = parseFloat(document.getElementById("b").value);
-  const T = parseFloat(document.getElementById("T").value);
-  const t = parseFloat(document.getElementById("t").value);
-  const L = parseFloat(document.getElementById("L").value);
+function lire(id){
+  const v=document.getElementById(id).value.trim().replace(",",".");
+  return v===""?NaN:Number(v);
+}
 
-  const result = document.getElementById("result");
+function calculer(){
+  const B=lire("B");
+  const b=lire("b");
+  const T=lire("T");
+  const t=lire("t");
+  const L=lire("L");
 
-  if (![B,b,T,t,L].every(Number.isFinite) ||
-      B <= b || b <= 0 || T <= t || t <= 0 || L <= 0) {
-    result.innerHTML = "Vérifiez les dimensions saisies.";
+  const error=document.getElementById("error");
+  const results=document.getElementById("results");
+
+  error.textContent="";
+  results.style.display="none";
+
+  if(![B,b,T,t,L].every(Number.isFinite)){
+    error.textContent="Veuillez remplir les 5 dimensions.";
     return;
   }
 
-  const h = Math.sqrt(T*T - t*t);
-  const W = b + ((T-t)*(B-b))/T;
-  const S = ((b+W)*h)/2;
-  const V = S*L;
+  if(B<=b || b<=0 || T<=0 || t<=0 || t>=T || L<=0){
+    error.textContent="Dimensions invalides. Vérifiez les valeurs.";
+    return;
+  }
 
-  result.innerHTML = `
-    <h3>Résultats GHIS-TRAP</h3>
-    Hauteur du ghis : ${h.toFixed(3)} m<br>
-    Largeur supérieure : ${W.toFixed(3)} m<br>
-    Section du ghis : ${S.toFixed(3)} m²<br>
-    <h2>Volume : ${V.toFixed(2)} m³</h2>
+  // Calcul géométrique
+  const h=Math.sqrt(T*T-t*t);
+  const W=b+((T-t)*(B-b))/T;
+  const S=((b+W)*h)/2;
+  const V=S*L;
+
+  if(![h,W,S,V].every(Number.isFinite)){
+    error.textContent="Erreur de calcul.";
+    return;
+  }
+
+  document.getElementById("hauteur").textContent=h.toFixed(3);
+  document.getElementById("largeur").textContent=W.toFixed(3);
+  document.getElementById("surface").textContent=S.toFixed(3);
+  document.getElementById("longueur").textContent=L.toFixed(2);
+  document.getElementById("volume").textContent=V.toFixed(2);
+
+  results.style.display="block";
+
+  dessiner(B,b,W,h);
+}
+
+function dessiner(B,b,W,h){
+  const svg=document.getElementById("schema");
+
+  const maxW=Math.max(B,1);
+  const maxH=Math.max(h,1);
+  const scale=Math.min(320/maxW,145/maxH);
+
+  const canalW=B*scale;
+  const ghisW=W*scale;
+  const x=(400-canalW)/2;
+  const bottom=215;
+  const top=bottom-145;
+  const ghisTop=bottom-h*scale;
+
+  const bottomLeft=x+(canalW-b*scale)/2;
+  const bottomRight=bottomLeft+b*scale;
+  const ghisLeft=bottomLeft;
+  const ghisRight=bottomRight;
+
+  const ghisSurfaceLeft=200-ghisW/2;
+  const ghisSurfaceRight=200+ghisW/2;
+
+  svg.innerHTML=`
+  <polygon points="${x},${top} ${x+canalW},${top} ${bottomRight},${bottom} ${bottomLeft},${bottom}"
+  fill="#e5e7eb" stroke="#263746" stroke-width="3"/>
+
+  <polygon points="${ghisLeft},${bottom} ${ghisRight},${bottom} ${ghisSurfaceRight},${ghisTop} ${ghisSurfaceLeft},${ghisTop}"
+  fill="#b68b54" stroke="#805b30" stroke-width="2"/>
+
+  <line x1="${ghisSurfaceLeft}" y1="${ghisTop}" x2="${ghisSurfaceRight}" y2="${ghisTop}"
+  stroke="#805b30" stroke-width="3"/>
+
+  <text x="200" y="${ghisTop-12}" text-anchor="middle" font-size="12" fill="#805b30">GHIS</text>
+  <text x="200" y="245" text-anchor="middle" font-size="12" fill="#263746">Petite base: ${b.toFixed(2)} m</text>
+  <text x="200" y="${top-10}" text-anchor="middle" font-size="12" fill="#263746">Grande base: ${B.toFixed(2)} m</text>
   `;
 }
 </script>
+</body>
+</html>
