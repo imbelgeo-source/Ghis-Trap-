@@ -1,1 +1,281 @@
 
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GHIS-TRAP</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:14px;background:#edf2f7;font-family:Arial,sans-serif;color:#263747}
+.container{max-width:600px;margin:auto;background:white;padding:18px;border-radius:14px;box-shadow:0 3px 15px #0001}
+header{background:#174a78;color:white;text-align:center;padding:20px;border-radius:10px}
+h1{margin:0;font-size:28px}
+header p{margin-bottom:0}
+h3{color:#174a78}
+label{display:block;font-weight:bold;margin-top:15px}
+input{width:100%;padding:13px;margin-top:6px;border:1px solid #cbd5df;border-radius:7px;font-size:17px}
+button{width:100%;padding:15px;margin-top:20px;border:0;border-radius:8px;background:#174a78;color:white;font-size:18px;font-weight:bold}
+.results{display:none;background:#edf8f0;padding:15px;border-radius:10px;margin-top:20px;line-height:2}
+.resultline{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid #d6e5da}
+.volume{text-align:center;color:#14723b;font-size:26px;font-weight:bold;margin-top:12px}
+.error{color:#c62828;font-weight:bold;margin-top:12px}
+.warning{color:#9a6500;font-size:13px;margin-top:10px}
+.drawing{margin-top:24px;border:1px solid #d5dce4;border-radius:10px;padding:10px}
+.drawing h3{text-align:center}
+svg{width:100%;height:auto;display:block}
+.legend{font-size:13px;line-height:2;margin-top:10px}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<header>
+<h1>GHIS-TRAP</h1>
+<p>Calcul du volume de ghis dans les canaux trapézoïdaux</p>
+</header>
+
+<h3>Dimensions du canal</h3>
+
+<label>Grande base B (m)</label>
+<input id="B" type="text" inputmode="decimal" placeholder="Ex: 6.10">
+
+<label>Petite base b (m)</label>
+<input id="b" type="text" inputmode="decimal" placeholder="Ex: 2.02">
+
+<label>Hauteur du canal H (m)</label>
+<input id="H" type="text" inputmode="decimal" placeholder="Ex: 1.64">
+
+<label>Paroi nette Pn (m)</label>
+<input id="Pn" type="text" inputmode="decimal" placeholder="Ex: 2.48">
+
+<label>Paroi vide Pv (m)</label>
+<input id="Pv" type="text" inputmode="decimal" placeholder="Ex: 1.86">
+
+<label>Longueur du tronçon L (m)</label>
+<input id="L" type="text" inputmode="decimal" placeholder="Ex: 93.35">
+
+<button onclick="calculer()">CALCULER</button>
+
+<div id="error" class="error"></div>
+
+<div id="results" class="results">
+<h3>Résultats du calcul</h3>
+
+<div class="resultline">
+<span>Hauteur verticale du ghis</span>
+<b id="hg"></b>
+</div>
+
+<div class="resultline">
+<span>Largeur supérieure du ghis</span>
+<b id="wg"></b>
+</div>
+
+<div class="resultline">
+<span>Surface du ghis</span>
+<b id="sg"></b>
+</div>
+
+<div class="resultline">
+<span>Longueur du tronçon</span>
+<b id="lg"></b>
+</div>
+
+<div class="volume">
+Volume total<br>
+<span id="vg"></span> m³
+</div>
+
+<div id="warning" class="warning"></div>
+</div>
+
+<div class="drawing">
+<h3>COUPE TRANSVERSALE DU CANAL</h3>
+<svg id="schema" viewBox="0 0 440 310">
+<text x="220" y="150" text-anchor="middle" fill="#777">
+En attente des dimensions
+</text>
+</svg>
+
+<div class="legend">
+<span style="color:#9b7041">■</span> Ghis (sédiments)<br>
+<span style="color:#34495e">■</span> Parois du canal<br>
+<small>Schéma géométrique du profil transversal.</small>
+</div>
+</div>
+
+</div>
+
+<script>
+function lire(id){
+  const v=document.getElementById(id).value.trim().replace(",",".");
+  return v==="" ? NaN : Number(v);
+}
+
+function calculer(){
+
+  const B=lire("B");
+  const b=lire("b");
+  const H=lire("H");
+  const Pn=lire("Pn");
+  const Pv=lire("Pv");
+  const L=lire("L");
+
+  const error=document.getElementById("error");
+  const results=document.getElementById("results");
+
+  error.textContent="";
+  results.style.display="none";
+
+  if(![B,b,H,Pn,Pv,L].every(Number.isFinite)){
+    error.textContent="Veuillez remplir les six dimensions.";
+    return;
+  }
+
+  if(B<=b || b<=0 || H<=0 || Pn<=0 ||
+     Pv<0 || Pv>=Pn || L<=0){
+    error.textContent="Dimensions invalides. Vérifiez les valeurs.";
+    return;
+  }
+
+  // 1. Hauteur verticale du ghis
+  const hg=H*(1-Pv/Pn);
+
+  // 2. Largeur du ghis à sa surface
+  const wg=b+(B-b)*(hg/H);
+
+  // 3. Surface de la section du ghis
+  const sg=((b+wg)*hg)/2;
+
+  // 4. Volume total
+  const vg=sg*L;
+
+  if(![hg,wg,sg,vg].every(Number.isFinite)){
+    error.textContent="Erreur de calcul.";
+    return;
+  }
+
+  document.getElementById("hg").textContent=hg.toFixed(3)+" m";
+  document.getElementById("wg").textContent=wg.toFixed(3)+" m";
+  document.getElementById("sg").textContent=sg.toFixed(3)+" m²";
+  document.getElementById("lg").textContent=L.toFixed(2)+" m";
+  document.getElementById("vg").textContent=vg.toFixed(2);
+
+  // Vérification géométrique indicative
+  const pnGeo=Math.sqrt(H*H+Math.pow((B-b)/2,2));
+  const ecart=Math.abs(Pn-pnGeo);
+
+  document.getElementById("warning").textContent =
+    ecart>0.03
+    ? "Attention : Paroi nette saisie différente de la longueur géométrique calculée ("+pnGeo.toFixed(3)+" m). Le calcul utilise votre valeur Pn."
+    : "";
+
+  results.style.display="block";
+
+  dessiner(B,b,H,hg,wg,Pn,Pv);
+}
+
+function dessiner(B,b,H,hg,wg,Pn,Pv){
+
+  const svg=document.getElementById("schema");
+
+  const marge=75;
+  const largeurMax=290;
+  const hauteurMax=175;
+
+  const scale=Math.min(largeurMax/B,hauteurMax/H);
+
+  const canalW=B*scale;
+  const canalH=H*scale;
+  const fondW=b*scale;
+  const ghisW=wg*scale;
+  const ghisH=hg*scale;
+
+  const centre=220;
+  const bas=240;
+  const haut=bas-canalH;
+
+  const xTL=centre-canalW/2;
+  const xTR=centre+canalW/2;
+
+  const xBL=centre-fondW/2;
+  const xBR=centre+fondW/2;
+
+  const yG=bas-ghisH;
+
+  const xGL=centre-ghisW/2;
+  const xGR=centre+ghisW/2;
+
+  svg.innerHTML=`
+  <defs>
+    <marker id="arrow" markerWidth="7" markerHeight="7"
+      refX="3" refY="3" orient="auto-start-reverse">
+      <path d="M0 0 L6 3 L0 6" fill="none"
+      stroke="#174a78" stroke-width="1"/>
+    </marker>
+  </defs>
+
+  <!-- Contour du canal -->
+  <path d="M ${xTL} ${haut}
+           L ${xTR} ${haut}
+           L ${xBR} ${bas}
+           L ${xBL} ${bas}"
+    fill="#f1f3f5" stroke="#34495e" stroke-width="3"/>
+
+  <!-- Ghis intégré au profil du canal -->
+  <path d="M ${xBL} ${bas}
+           L ${xBR} ${bas}
+           L ${xGR} ${yG}
+           L ${xGL} ${yG} Z"
+    fill="#b68b54" stroke="#805b30" stroke-width="2"/>
+
+  <!-- Ligne de surface du ghis -->
+  <line x1="${xGL}" y1="${yG}"
+        x2="${xGR}" y2="${yG}"
+        stroke="#805b30" stroke-width="3"/>
+
+  <!-- Hauteur verticale du ghis -->
+  <line x1="${centre+ghisW/2+22}" y1="${bas}"
+        x2="${centre+ghisW/2+22}" y2="${yG}"
+        stroke="#174a78" stroke-width="2"
+        marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+
+  <text x="${centre+ghisW/2+29}"
+        y="${(bas+yG)/2}"
+        font-size="12" fill="#174a78">Hg</text>
+
+  <!-- Grande base -->
+  <text x="${centre}" y="${haut-12}"
+        text-anchor="middle" font-size="13"
+        fill="#34495e">B = ${B.toFixed(2)} m</text>
+
+  <!-- Petite base -->
+  <text x="${centre}" y="${bas+18}"
+        text-anchor="middle" font-size="12"
+        fill="#34495e">b = ${b.toFixed(2)} m</text>
+
+  <!-- Hauteur totale -->
+  <line x1="${xTR+25}" y1="${haut}"
+        x2="${xTR+25}" y2="${bas}"
+        stroke="#34495e" stroke-width="1.5"
+        marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+
+  <text x="${xTR+31}" y="${(haut+bas)/2}"
+        font-size="12" fill="#34495e">H</text>
+
+  <!-- Ghis label -->
+  <text x="${centre}" y="${yG+ghisH/2+4}"
+        text-anchor="middle" font-size="13"
+        font-weight="bold" fill="#68451e">GHIS</text>
+
+  <text x="220" y="295" text-anchor="middle"
+        font-size="11" fill="#666">
+        Profil transversal - dimensions en mètres
+  </text>
+  `;
+}
+</script>
+</body>
+</html>
